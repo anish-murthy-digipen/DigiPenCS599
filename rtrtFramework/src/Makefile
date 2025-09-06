@@ -11,13 +11,13 @@ else
     pkgName=sol-rtrtFramework
 endif
 
-LIBDIR := /home/gherron/projects/frameworks/libs
+LIBDIR := ../libs# /home/gherron/projects/frameworks/libs
 VPATH = $(LIBDIR)/imgui-master $(LIBDIR)/imgui-master/backends shaders
 
 # Where the .o files go
 vpath %.o  $(ODIR)
 
-SDK = /home/gherron/vulkanSDK/1.3.261.0/x86_64/include/
+SDK = /home/deck/Documents/DevEnv/vulkan/1.4.321.1/x86_64/include/
 
 pkgDir = /home/gherron/packages
 
@@ -25,7 +25,8 @@ CXX = g++
 
 CFLAGS = -g  $(VFLAG)  -DPROJECT_NAME=\"rtrt\"  -DPROJECT_RELDIRECTORY=\".\" 
 
-CXXFLAGS = $(CFLAGS) -std=c++17 -I. -I$(SDK) -I$(LIBDIR)/glm -I$(LIBDIR)/imgui-master -I$(LIBDIR)/imgui-master/backends -I$(LIBDIR)  -I$(LIBDIR)/glfw/include
+# CXXFLAGS = $(CFLAGS) -std=c++17 -I. -I$(SDK) -I$(LIBDIR)/glm -I$(LIBDIR)/imgui-master -I$(LIBDIR)/imgui-master/backends -I$(LIBDIR)  -I$(LIBDIR)/glfw/include
+CXXFLAGS = $(CFLAGS) -std=c++17 -I. -I$(SDK) -I$(LIBDIR)/glm -I$(LIBDIR)/imgui-master -I$(LIBDIR)/imgui-master/backends -I$(LIBDIR)  -I$(LIBDIR)/glfw/include -I$(LIBDIR)/assimp/include
 
 LIBS =  -lassimp  -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi `pkg-config --static --libs glfw3`
 

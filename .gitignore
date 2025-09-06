@@ -1,0 +1,14 @@
+*.suo
+*.sdf
+*.orig
+Release/
+Debug/
+ipch
+*.o
+*.exe
+*~
+raytrace/
+dependencies
+*13*scn
+*13*ppm
+spv/

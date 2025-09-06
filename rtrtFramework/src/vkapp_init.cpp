@@ -52,6 +52,9 @@ void VkApp::createInstance(bool doApiDump)
     // Print them out while you are at it
     printf("GLFW required extensions:\n");
     // ...
+    for ( int i = 0; i < countGLFWextensions; ++i) {
+      std::cout << std::string(reqGLFWextensions[i]);
+    }
 
     // Suggestion: Parse a command line argument to set/unset doApiDump
     // If included, the api_dump layer should be first on reqInstanceLayers
