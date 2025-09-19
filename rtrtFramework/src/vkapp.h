@@ -127,17 +127,23 @@ public:
     void getSurface();
     
     VkCommandPool m_cmdPool{VK_NULL_HANDLE};
-    VkCommandBuffer m_commandBuffer{};
+    // VkCommandBuffer m_commandBuffer{};
+    std::vector<VkCommandBuffer> m_commandBuffers;
+    VkCommandBuffer m_commandBuffer;
     void createCommandPool();
 
     VkSwapchainKHR m_swapchain{VK_NULL_HANDLE};
-    uint32_t       m_imageCount{0};
+    uint32_t       m_imageCount = 2;
+    int currentFrame = 0;
     std::vector<VkImage>     m_swapchainImages{};  // from vkGetSwapchainImagesKHR
     std::vector<VkImageView> m_imageViews{};
     std::vector<VkImageMemoryBarrier> m_barriers{};  // Filled in  VkImageMemoryBarrier objects
-    VkFence m_waitFence{}; 
-    VkSemaphore m_readSemaphore{};
-    VkSemaphore m_writtenSemaphore{};
+    // VkFence m_waitFence{}; 
+    // VkSemaphore m_readSemaphore{};
+    // VkSemaphore m_writtenSemaphore{};
+    std::vector<VkFence> m_inFlightFences;
+    std::vector<VkSemaphore> m_imageAvailableSemaphores;
+    std::vector<VkSemaphore> m_renderFinishedSemaphores;
     VkExtent2D m_windowSize{0, 0}; // Size of the window
     void createSwapchain();
 

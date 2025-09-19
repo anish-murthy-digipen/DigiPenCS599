@@ -27,7 +27,7 @@ VkApp::VkApp(App* _app) : app(_app)
     printf("SDK Version: %d.%d.%d\n", VK_API_VERSION_MAJOR(version),
            VK_API_VERSION_MINOR(version), VK_API_VERSION_PATCH(version));
 
-    // createInstance(app->doApiDump);	// -> m_instance
+    createInstance(app->doApiDump);	// -> m_instance
     // assert (m_instance);
     // createPhysicalDevice();		// -> m_physicalDevice i.e. the GPU
     // chooseQueueIndex();		// -> m_graphicsQueueIndex
@@ -132,12 +132,15 @@ void VkApp::submitTempCmdBuffer(VkCommandBuffer cmdBuffer)
 void VkApp::prepareFrame()
 {
     // Use a fence to wait until the command buffer has finished execution before using it again
-    vkWaitForFences(m_device, 1, &m_waitFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(m_device, 1, &m_waitFence);
+    vkWaitForFences(m_device, 1, &m_inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    vkResetFences(m_device, 1, &m_inFlightFences[currentFrame]);
         
     // Acquire the next image from the swap chain --> m_swapchainIndex
-    VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_readSemaphore,
+    VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX,
+                                            m_imageAvailableSemaphores[currentFrame],
                                             (VkFence)VK_NULL_HANDLE, &m_swapchainIndex);
+    
+    m_commandBuffer = m_commandBuffers[currentFrame];
 
     // Check if window has been resized -- or other(??) swapchain specific event
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -147,7 +150,8 @@ void VkApp::prepareFrame()
 
 void VkApp::submitFrame()
 {
-    //vkResetFences(m_device, 1, &m_waitFence);
+    // Maybe shouldn't be here? v
+    //vkResetFences(m_device, 1, &m_inFlightFences[currentFrame];
 
     // Pipeline stage at which the queue submission will wait (via pWaitSemaphores)
     const VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -157,21 +161,23 @@ void VkApp::submitFrame()
     submitInfo.pNext             = nullptr;
     submitInfo.pWaitDstStageMask = &waitStageMask; //  pipeline stages to wait for
     submitInfo.waitSemaphoreCount   = 1;  
-    submitInfo.pWaitSemaphores = &m_readSemaphore;  // waited upon before execution
+    submitInfo.pWaitSemaphores = &m_imageAvailableSemaphores[currentFrame];  // waited upon before execution
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores    = &m_writtenSemaphore; // signaled when execution finishes
+    submitInfo.pSignalSemaphores    = &m_renderFinishedSemaphores[currentFrame]; // signaled when execution finishes
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &m_commandBuffer;
-    vkQueueSubmit(m_queue, 1, &submitInfo, m_waitFence);
+    vkQueueSubmit(m_queue, 1, &submitInfo, m_inFlightFences[currentFrame]);
     
     // Present frame
     VkPresentInfoKHR presentInfo{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores    = &m_writtenSemaphore;;
+    presentInfo.pWaitSemaphores    = &m_renderFinishedSemaphores[currentFrame];
     presentInfo.swapchainCount     = 1;
     presentInfo.pSwapchains        = &m_swapchain;
     presentInfo.pImageIndices      = &m_swapchainIndex;
     vkQueuePresentKHR(m_queue, &presentInfo);
+
+    currentFrame = (currentFrame+1) % m_imageCount;
 
     // @@ Verify success of vkQueueSubmit and vkQueuePresentKHR
 }

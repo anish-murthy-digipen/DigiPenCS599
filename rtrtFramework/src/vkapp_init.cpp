@@ -21,8 +21,8 @@
 void VkApp::destroyAllVulkanResources()
 {
     // @@  Uncomment next 3 lines when directed to do so at the end of postProcess().
-    //vkWaitForFences(m_device, 1, &m_waitFence, VK_TRUE, UINT64_MAX);
-    //vkResetFences(m_device, 1, &m_waitFence);
+    //vkWaitForFences(m_device, 1, &m_inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    //vkResetFences(m_device, 1, &m_inFlightFences[currentFrame]);
     //vkDeviceWaitIdle(m_device);
     
     #ifdef GUI
@@ -267,12 +267,13 @@ void VkApp::createCommandPool()
     // @@ Verify success of vkCreateCommandPool
     // @@ To destroy: vkDestroyCommandPool(m_device, m_cmdPool, nullptr);
     
-    // Create a command buffer
+    // Create command buffers
+    m_commandBuffers.resize(m_imageCount);
     VkCommandBufferAllocateInfo allocateInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     allocateInfo.commandPool        = m_cmdPool;
-    allocateInfo.commandBufferCount = 1;
+    allocateInfo.commandBufferCount = m_imageCount;
     allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    vkAllocateCommandBuffers(m_device, &allocateInfo, &m_commandBuffer);
+    vkAllocateCommandBuffers(m_device, &allocateInfo, m_commandBuffers.data());
     // @@ Verify success of vkAllocateCommandBuffers
     // @@ Nothing to destroy -- the pool owns the command buffer.
 }
@@ -370,16 +371,6 @@ void VkApp::createSwapchain()
     // If this assert fires, we have some work to do to better deal
     // with the situation.
 
-    // Choose the number of swap chain images, within the bounds supported.
-    uint imageCount = capabilities.minImageCount + 1; // Recommendation: minImageCount+1
-    if (capabilities.maxImageCount > 0
-        && imageCount > capabilities.maxImageCount) {
-            imageCount = capabilities.maxImageCount; }
-    
-    assert (imageCount == 3);
-    // If this triggers, disable the assert, BUT help me understand
-    // the situation that caused it.  
-
     // Create the swap chain
     VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
                                  | VK_IMAGE_USAGE_STORAGE_BIT
@@ -387,7 +378,7 @@ void VkApp::createSwapchain()
     
     VkSwapchainCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     createInfo.surface                  = m_surface;
-    createInfo.minImageCount            = imageCount;
+    createInfo.minImageCount            = m_imageCount;
     createInfo.imageFormat              = surfaceFormat;
     createInfo.imageColorSpace          = surfaceColor;
     createInfo.imageExtent              = swapchainExtent;
@@ -412,8 +403,12 @@ void VkApp::createSwapchain()
     
     // @@ Verify success of vkGetSwapchainImagesKHR
     
+    // Resize containers for objects that are created for each swapchain image.
     m_barriers.resize(m_imageCount);
     m_imageViews.resize(m_imageCount);
+    m_imageAvailableSemaphores.resize(m_imageCount);
+    m_renderFinishedSemaphores.resize(m_imageCount);
+    m_inFlightFences.resize(m_imageCount);
 
     // Create an VkImageView for each swap chain image.
     for (uint i=0;  i<m_imageCount;  i++) {
@@ -466,25 +461,36 @@ void VkApp::createSwapchain()
     // technically part of the swap chain, but they are used
     // exclusively for synchronizing the swap chain, so I include them
     // here.
-    VkFenceCreateInfo fenceCreateInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_waitFence);
-    NAME(m_waitFence, VK_OBJECT_TYPE_FENCE, "m_waitFence");
+    // VkFenceCreateInfo fenceCreateInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    // fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    // vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_waitFence);
+    // NAME(m_waitFence, VK_OBJECT_TYPE_FENCE, "m_waitFence");
+    //
+    // VkSemaphoreCreateInfo semCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    // vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_readSemaphore);
+    // vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_writtenSemaphore);
+    // NAME(m_readSemaphore, VK_OBJECT_TYPE_SEMAPHORE, "m_readSemaphore");
+    // NAME(m_writtenSemaphore, VK_OBJECT_TYPE_SEMAPHORE, "m_writtenSemaphore");
+    for (uint i=0;  i<m_imageCount;  i++) {
+        VkFenceCreateInfo fenceCreateInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_inFlightFences[i]);
+        NAME(m_inFlightFences[i], VK_OBJECT_TYPE_FENCE, "m_inFlightFence");
     
-    VkSemaphoreCreateInfo semCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-    vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_readSemaphore);
-    vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_writtenSemaphore);
-    NAME(m_readSemaphore, VK_OBJECT_TYPE_SEMAPHORE, "m_readSemaphore");
-    NAME(m_writtenSemaphore, VK_OBJECT_TYPE_SEMAPHORE, "m_writtenSemaphore");
+        VkSemaphoreCreateInfo semCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+        vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_imageAvailableSemaphores[i]);
+        vkCreateSemaphore(m_device, &semCreateInfo, nullptr, &m_renderFinishedSemaphores[i]);
+        NAME(m_imageAvailableSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "m_imageAvailableSemaphore");
+        NAME(m_renderFinishedSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "m_renderFinishedSemaphore");
+    }
         
     m_windowSize = swapchainExtent;
     
-    // @@ Destroy m_imageViews (looping through all 3)
+    // @@ Destroy ALL m_imageViews and synchronization items (looping i through m_imageCount):
     //      vkDestroyImageView(m_device, m_imageViews[i], nullptr)
-    // @@ Destroy the synchronization items: 
-    //      vkDestroyFence(m_device, m_waitFence, nullptr);
-    //      vkDestroySemaphore(m_device, m_readSemaphore, nullptr);
-    //      vkDestroySemaphore(m_device, m_writtenSemaphore, nullptr);
+    //      vkDestroyFence(m_device, m_inFlightFences[i], nullptr);
+    //      vkDestroySemaphore(m_device, m_imageAvailableSemaphores[i], nullptr);
+    //      vkDestroySemaphore(m_device, m_renderFinishedSemaphores[i], nullptr);
     // @@ Destroy the actual swapchain with:
     //      vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
 }
