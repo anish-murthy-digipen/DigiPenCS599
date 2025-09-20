@@ -27,7 +27,8 @@ VkApp::VkApp(App* _app) : app(_app)
     printf("SDK Version: %d.%d.%d\n", VK_API_VERSION_MAJOR(version),
            VK_API_VERSION_MINOR(version), VK_API_VERSION_PATCH(version));
 
-    createInstance(app->doApiDump);	// -> m_instance
+    createInstance(app->doApiDump);  // -> m_instance
+    
     // assert (m_instance);
     // createPhysicalDevice();		// -> m_physicalDevice i.e. the GPU
     // chooseQueueIndex();		// -> m_graphicsQueueIndex

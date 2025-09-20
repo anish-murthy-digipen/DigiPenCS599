@@ -17,7 +17,7 @@ VPATH = $(LIBDIR)/imgui-master $(LIBDIR)/imgui-master/backends shaders
 # Where the .o files go
 vpath %.o  $(ODIR)
 
-SDK = /home/deck/Documents/DevEnv/vulkan/1.4.321.1/x86_64/include/
+SDK = /usr/include/vulkan/
 
 pkgDir = /home/gherron/packages
 

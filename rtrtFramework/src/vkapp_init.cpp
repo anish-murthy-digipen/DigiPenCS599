@@ -33,7 +33,7 @@ void VkApp::destroyAllVulkanResources()
     // Destroy all vulkan objects.
     // ...  All objects created on m_device must be destroyed before m_device.
     //vkDestroyDevice(m_device, nullptr);
-    //vkDestroyInstance(m_instance, nullptr);
+    vkDestroyInstance(m_instance, nullptr);
 }
 
 void VkApp::recreateSizedResources(VkExtent2D size)
@@ -51,11 +51,10 @@ void VkApp::createInstance(bool doApiDump)
     // @@ Append each GLFW required extension in reqGLFWextensions to reqInstanceExtensions
     // Print them out while you are at it
     printf("GLFW required extensions:\n");
-    // ...
     for ( int i = 0; i < countGLFWextensions; ++i) {
       std::cout << std::string(reqGLFWextensions[i]);
     }
-
+    std::cout << std::endl;
     // Suggestion: Parse a command line argument to set/unset doApiDump
     // If included, the api_dump layer should be first on reqInstanceLayers
     if (doApiDump)
@@ -75,7 +74,10 @@ void VkApp::createInstance(bool doApiDump)
 
     // @@ Print out the availableLayers
     printf("InstanceLayer count: %d\n", count);
-    // ...  use availableLayers[i].layerName
+    printf("Available Layers:\n");
+    for (int i = 0; i < count; ++i) {
+        printf("%s\n", availableLayers[i].layerName);
+    }
 
     // Another three step dance
     vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
@@ -84,7 +86,9 @@ void VkApp::createInstance(bool doApiDump)
 
     // @@ Print out the availableExtensions
     printf("InstanceExtensions count: %d\n", count);
-    // ...  use availableExtensions[i].extensionName
+    for (int i = 0; i < count; ++i) {
+        printf("%s\n", availableExtensions[i].extensionName);
+    }
 
     VkApplicationInfo applicationInfo{VK_STRUCTURE_TYPE_APPLICATION_INFO};
     applicationInfo.pApplicationName = "rtrt";
@@ -101,11 +105,13 @@ void VkApp::createInstance(bool doApiDump)
     instanceCreateInfo.enabledLayerCount       = reqInstanceLayers.size();
     instanceCreateInfo.ppEnabledLayerNames     = reqInstanceLayers.data();
 
-    vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance);
+    // vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance);
 
     // @@ Verify success of vkCreateInstance like this:
-    //    if (vkCreateInstance(...) != VK_SUCCESS)
-    //        throw std::runtime_error("vkCreateInstance failed.");
+    if (vkCreateInstance(&instanceCreateInfo, 
+                         nullptr, 
+                         &m_instance) != VK_SUCCESS)
+        throw std::runtime_error("vkCreateInstance failed.");
     // @@ To destroy: vkDestroyInstance(m_instance, nullptr);
     // @@ Cut-and-paste the above three list printouts into your report.
 }
